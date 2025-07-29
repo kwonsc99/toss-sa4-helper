@@ -206,7 +206,7 @@ export default function CustomerForm({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            초기 상태
+            현재 상태
           </label>
           <select
             value={formData.status}
