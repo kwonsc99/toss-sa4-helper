@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { User } from "@/types";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -10,31 +11,38 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const router = useRouter();
 
-  // 인증 상태 확인
+  // 클라이언트 사이드에서만 실행
   useEffect(() => {
-    const checkAuth = () => {
-      const userData = localStorage.getItem("user");
-      if (userData) {
-        router.push("/dashboard");
-      } else {
-        setIsCheckingAuth(false);
-      }
-    };
-    checkAuth();
-  }, [router]);
+    setIsClient(true);
+  }, []);
 
-  // 로딩 중이면 로딩 화면 표시
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="text-xl font-semibold text-toss-gray">로딩 중...</div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!isClient) return;
+
+    const checkAuth = () => {
+      try {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user && user.id && user.username) {
+            router.replace("/dashboard");
+            return;
+          } else {
+            localStorage.removeItem("user");
+          }
+        }
+      } catch (error) {
+        localStorage.removeItem("user");
+      }
+      setIsCheckingAuth(false);
+    };
+
+    const timer = setTimeout(checkAuth, 100);
+    return () => clearTimeout(timer);
+  }, [isClient, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,8 +62,10 @@ export default function LoginPage() {
         return;
       }
 
-      localStorage.setItem("user", JSON.stringify(data));
-      router.push("/dashboard");
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(data as User));
+        router.replace("/dashboard");
+      }
     } catch (err) {
       setError("로그인 중 오류가 발생했습니다.");
     } finally {
@@ -63,6 +73,18 @@ export default function LoginPage() {
     }
   };
 
+  // 클라이언트 준비되지 않았거나 인증 확인 중
+  if (!isClient || isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="text-xl font-semibold text-toss-gray">로딩 중...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 나머지 로그인 폼은 동일
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border">
