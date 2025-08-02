@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   CustomerStatus,
   CustomerFilters,
@@ -42,7 +42,9 @@ export default function Dashboard() {
   const [activeStatus, setActiveStatus] = useState<CustomerStatus | "all">(
     "all"
   );
-  const [filters, setFilters] = useState<CustomerFilters>({});
+  const [filters, setFilters] = useState<CustomerFilters>({
+    sortBy: "latest", // 기본값으로 최신등록순 설정
+  });
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
 
   // 모달 상태
@@ -63,26 +65,56 @@ export default function Dashboard() {
       loadCustomers({ ...filters, status: activeStatus });
     }
   }, [activeStatus, filters, user]);
+  // 필터 적용된 고객 목록 (정렬 포함)
+  const filteredCustomers = useMemo(() => {
+    let filtered = customers.filter((customer) => {
+      if (activeStatus !== "all" && customer.status !== activeStatus)
+        return false;
+      if (filters.date) {
+        const customerDate = new Date(customer.created_at) // updated_at 대신 created_at 사용
+          .toISOString()
+          .split("T")[0];
+        if (customerDate !== filters.date) return false;
+      }
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        return (
+          customer.name.toLowerCase().includes(searchTerm) ||
+          customer.company?.toLowerCase().includes(searchTerm)
+        );
+      }
+      return true;
+    });
 
-  // 필터 적용된 고객 목록
-  const filteredCustomers = customers.filter((customer) => {
-    if (activeStatus !== "all" && customer.status !== activeStatus)
-      return false;
-    if (filters.date) {
-      const customerDate = new Date(customer.updated_at)
-        .toISOString()
-        .split("T")[0];
-      if (customerDate !== filters.date) return false;
-    }
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      return (
-        customer.name.toLowerCase().includes(searchTerm) ||
-        customer.company?.toLowerCase().includes(searchTerm)
-      );
-    }
-    return true;
-  });
+    // 클라이언트 사이드 정렬 (DB에서 이미 정렬되지만 필터링 후 재정렬)
+    const sortBy = filters.sortBy || "latest";
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "latest":
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+        case "oldest":
+          return (
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        case "name_asc":
+          return a.name.localeCompare(b.name, "ko");
+        case "name_desc":
+          return b.name.localeCompare(a.name, "ko");
+        case "company_asc":
+          return (a.company || "").localeCompare(b.company || "", "ko");
+        case "company_desc":
+          return (b.company || "").localeCompare(a.company || "", "ko");
+        default:
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+      }
+    });
+
+    return filtered;
+  }, [customers, activeStatus, filters]);
 
   const handleCustomerSubmit = async (
     customerData: Partial<Customer>,
@@ -209,7 +241,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header user={user} onLogout={logout} />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <StatusTabs
           activeStatus={activeStatus}
@@ -244,7 +275,6 @@ export default function Dashboard() {
           onStatusChange={handleStatusChange}
         />
       </div>
-
       {/* 모달들 */}
       <CustomerForm
         isOpen={showCustomerForm}
@@ -255,17 +285,23 @@ export default function Dashboard() {
         }}
         onSubmit={handleCustomerSubmit}
       />
-
       <CallLogForm
         isOpen={showCallLogForm}
-        customer={selectedCustomer}
+        customer={
+          selectedCustomer
+            ? {
+                name: selectedCustomer.name,
+                id: selectedCustomer.id,
+                company: selectedCustomer.company || undefined, // null을 undefined로 변환
+              }
+            : null
+        }
         onClose={() => {
           setShowCallLogForm(false);
           setSelectedCustomer(null);
         }}
         onSubmit={handleCallLogSubmit}
       />
-
       <CallLogHistory
         isOpen={showCallLogHistory}
         customer={selectedCustomer}
@@ -279,7 +315,6 @@ export default function Dashboard() {
           setShowCallLogEdit(true);
         }}
       />
-
       <CallLogEditForm
         isOpen={showCallLogEdit}
         callLog={editingCallLog}

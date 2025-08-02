@@ -1,9 +1,11 @@
 "use client";
 
+import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import {
   ConnectionStatus,
   FollowUpAction,
+  FollowUpActionType,
   SellerReaction,
   CustomerStatus,
   CallLogFormData,
@@ -13,6 +15,8 @@ import {
   STATUS_OPTIONS,
   EMAIL_TEMPLATE,
   KAKAO_TEMPLATE,
+  SMS_TEMPLATE,
+  FOLLOW_UP_ACTION_OPTIONS,
 } from "@/constants";
 import { Copy } from "lucide-react";
 import Button from "../common/Button";
@@ -20,13 +24,16 @@ import Modal from "../common/Modal";
 
 interface CallLogFormProps {
   isOpen?: boolean;
-  customer: { name: string; id?: string } | null;
+  customer: {
+    name: string;
+    id?: string;
+    company?: string | null; // null도 허용하도록 수정
+  } | null;
   onSubmit: (callLogData: CallLogFormData, nextStatus: CustomerStatus) => void;
   onCancel?: () => void;
   onClose?: () => void;
   embedded?: boolean;
 }
-
 export default function CallLogForm({
   isOpen = true,
   customer,
@@ -35,24 +42,25 @@ export default function CallLogForm({
   onClose,
   embedded = false,
 }: CallLogFormProps) {
+  // 현재 사용자 정보 가져오기
+  const { user } = useAuth();
   const [step, setStep] = useState<
     "connection" | "followup" | "calllog" | "template"
   >("connection");
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>();
-  const [followUpAction, setFollowUpAction] = useState<FollowUpAction>();
+  const [followUpActions, setFollowUpActions] = useState<FollowUpActionType[]>(
+    []
+  );
   const [nextStatus, setNextStatus] = useState<CustomerStatus>();
   const [formData, setFormData] = useState<CallLogFormData>({
     connection_status: "" as ConnectionStatus,
-    follow_up_action: "" as FollowUpAction,
+    follow_up_action: [],
     seller_reaction: "" as SellerReaction,
     call_content: "",
     follow_up_planning: "",
     special_notes: "",
   });
   const [showTemplate, setShowTemplate] = useState(false);
-  const [templateType, setTemplateType] = useState<"email" | "kakao" | "both">(
-    "email"
-  );
 
   const handleConnectionNext = () => {
     if (!connectionStatus) {
@@ -76,44 +84,53 @@ export default function CallLogForm({
     setStep("followup");
   };
 
+  const handleFollowUpActionToggle = (action: FollowUpActionType) => {
+    setFollowUpActions((prev) => {
+      if (action === "조치안함") {
+        // 조치안함 선택시 다른 액션들 제거
+        return ["조치안함"];
+      } else {
+        // 다른 액션 선택시 조치안함 제거
+        const newActions = prev.filter((a) => a !== "조치안함");
+        if (newActions.includes(action)) {
+          return newActions.filter((a) => a !== action);
+        } else {
+          return [...newActions, action];
+        }
+      }
+    });
+  };
+
   const handleFollowUpNext = () => {
-    if (!followUpAction) {
+    if (followUpActions.length === 0) {
       alert("후속 행동을 선택해주세요.");
       return;
     }
 
     // 후속 컨택 플래닝 자동 설정
-    let autoFollowUpPlanning = "";
-    switch (followUpAction) {
-      case "조치안함":
-        autoFollowUpPlanning = "조치안함";
-        break;
-      case "이메일로_컨택_유도":
-        autoFollowUpPlanning = "이메일로 컨택 유도";
-        break;
-      case "카톡_및_문자로_컨택_유도":
-        autoFollowUpPlanning = "카톡 및 문자로 컨택 유도";
-        break;
-      case "이메일+카톡/문자로_컨택_유도":
-        autoFollowUpPlanning = "이메일+카톡/문자로 컨택 유도";
-        break;
-    }
+    const planningTexts = followUpActions.map((action) => {
+      switch (action) {
+        case "조치안함":
+          return "조치안함";
+        case "이메일로_컨택_유도":
+          return "이메일로 컨택 유도";
+        case "카톡으로_컨택_유도":
+          return "카톡으로 컨택 유도";
+        case "문자로_컨택_유도":
+          return "문자로 컨택 유도";
+        default:
+          return action;
+      }
+    });
 
     setFormData((prev) => ({
       ...prev,
-      follow_up_action: followUpAction,
-      follow_up_planning: autoFollowUpPlanning,
+      follow_up_action: followUpActions,
+      follow_up_planning: planningTexts.join(", "),
     }));
 
-    // 템플릿 표시
-    if (followUpAction.includes("이메일") || followUpAction.includes("카톡")) {
-      if (followUpAction === "이메일+카톡/문자로_컨택_유도") {
-        setTemplateType("both");
-      } else if (followUpAction === "이메일로_컨택_유도") {
-        setTemplateType("email");
-      } else {
-        setTemplateType("kakao");
-      }
+    // 템플릿 표시 (조치안함이 아닌 경우)
+    if (!followUpActions.includes("조치안함")) {
       setShowTemplate(true);
       setStep("template");
     } else {
@@ -144,16 +161,16 @@ export default function CallLogForm({
   const copyCallLogContent = () => {
     const callLogText = `
 [콜로그]
-고객명: ${customer?.name || ""}
-연결상태: ${formData.connection_status}
-후속행동: ${formData.follow_up_action
-      .replace(/[_+]/g, " ")
-      .replace("로 컨택", "로 컨택")}
 셀러반응: ${formData.seller_reaction}
 주요콜내용: ${formData.call_content}
-후속컨택플래닝: ${formData.follow_up_planning}
+후속행동: ${formData.follow_up_action
+      .map(
+        (action) =>
+          FOLLOW_UP_ACTION_OPTIONS.find((opt) => opt.value === action)?.label ||
+          action
+      )
+      .join(", ")}
 특이사항: ${formData.special_notes || "없음"}
-다음상태: ${nextStatus ? STATUS_OPTIONS[nextStatus].label : ""}
 `.trim();
 
     navigator.clipboard.writeText(callLogText);
@@ -164,7 +181,6 @@ export default function CallLogForm({
     navigator.clipboard.writeText(template);
     alert(`${type} 템플릿이 클립보드에 복사되었습니다!`);
   };
-
   const renderConnectionStep = () => (
     <div className="space-y-4">
       <h4 className="font-medium text-toss-gray">
@@ -200,36 +216,45 @@ export default function CallLogForm({
 
   const renderFollowUpStep = () => (
     <div className="space-y-4">
-      <h4 className="font-medium text-toss-gray">후속 행동을 선택해주세요</h4>
+      <h4 className="font-medium text-toss-gray">
+        후속 행동을 선택해주세요 (다중 선택 가능)
+      </h4>
       <div className="space-y-3">
-        {(
-          [
-            "조치안함",
-            "이메일로_컨택_유도",
-            "카톡_및_문자로_컨택_유도",
-            "이메일+카톡/문자로_컨택_유도",
-          ] as FollowUpAction[]
-        ).map((action) => (
+        {FOLLOW_UP_ACTION_OPTIONS.map((option) => (
           <label
-            key={action}
+            key={option.value}
             className="flex items-center space-x-3 cursor-pointer"
           >
             <input
-              type="radio"
-              name="followup"
-              value={action}
-              checked={followUpAction === action}
-              onChange={(e) =>
-                setFollowUpAction(e.target.value as FollowUpAction)
+              type="checkbox"
+              checked={followUpActions.includes(
+                option.value as FollowUpActionType
+              )}
+              onChange={() =>
+                handleFollowUpActionToggle(option.value as FollowUpActionType)
               }
-              className="w-4 h-4 text-toss-blue focus:ring-toss-blue"
+              className="w-4 h-4 text-toss-blue focus:ring-toss-blue rounded"
             />
-            <span className="text-gray-700">
-              {action.replace(/[_+]/g, " ").replace("로 컨택", "로 컨택")}
-            </span>
+            <span className="text-gray-700">{option.label}</span>
           </label>
         ))}
       </div>
+
+      {followUpActions.length > 0 && (
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <div className="text-sm text-blue-800">
+            <strong>선택된 후속 행동:</strong>{" "}
+            {followUpActions
+              .map(
+                (action) =>
+                  FOLLOW_UP_ACTION_OPTIONS.find((opt) => opt.value === action)
+                    ?.label
+              )
+              .join(", ")}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between">
         <Button variant="secondary" onClick={() => setStep("connection")}>
           이전
@@ -239,13 +264,14 @@ export default function CallLogForm({
     </div>
   );
 
+  // 템플릿 렌더링 부분 수정
   const renderTemplateStep = () => (
     <div className="space-y-4">
       <h4 className="font-medium text-toss-gray">템플릿</h4>
 
-      {templateType === "both" ? (
-        <div className="space-y-6">
-          {/* 이메일 템플릿 */}
+      <div className="space-y-6">
+        {/* 이메일 템플릿 */}
+        {followUpActions.includes("이메일로_컨택_유도") && (
           <div>
             <div className="flex justify-between items-center mb-2">
               <h5 className="font-medium text-gray-700">이메일 템플릿</h5>
@@ -253,32 +279,12 @@ export default function CallLogForm({
                 size="sm"
                 variant="secondary"
                 onClick={() =>
-                  copyTemplate(EMAIL_TEMPLATE(customer?.name || ""), "이메일")
-                }
-              >
-                복사
-              </Button>
-            </div>
-            <div className="bg-gray-50 p-4 rounded border text-sm">
-              <pre className="whitespace-pre-wrap">
-                {EMAIL_TEMPLATE(customer?.name || "")}
-              </pre>
-            </div>
-          </div>
-
-          {/* 카카오톡/문자 템플릿 */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h5 className="font-medium text-gray-700">
-                카카오톡/문자 템플릿
-              </h5>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() =>
                   copyTemplate(
-                    KAKAO_TEMPLATE(customer?.name || ""),
-                    "카카오톡/문자"
+                    EMAIL_TEMPLATE(
+                      customer?.company || customer?.name, // companyName 파라미터
+                      user || undefined // user 파라미터
+                    ),
+                    "이메일"
                   )
                 }
               >
@@ -287,43 +293,79 @@ export default function CallLogForm({
             </div>
             <div className="bg-gray-50 p-4 rounded border text-sm">
               <pre className="whitespace-pre-wrap">
-                {KAKAO_TEMPLATE(customer?.name || "")}
+                {EMAIL_TEMPLATE(
+                  customer?.company || customer?.name,
+                  user || undefined
+                )}
               </pre>
             </div>
           </div>
-        </div>
-      ) : (
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h5 className="font-medium text-gray-700">
-              {templateType === "email" ? "이메일" : "카카오톡/문자"} 템플릿
-            </h5>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                const template =
-                  templateType === "email"
-                    ? EMAIL_TEMPLATE(customer?.name || "")
-                    : KAKAO_TEMPLATE(customer?.name || "");
-                copyTemplate(
-                  template,
-                  templateType === "email" ? "이메일" : "카카오톡/문자"
-                );
-              }}
-            >
-              복사
-            </Button>
+        )}
+
+        {/* 카카오톡 템플릿 */}
+        {followUpActions.includes("카톡으로_컨택_유도") && (
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h5 className="font-medium text-gray-700">카카오톡 템플릿</h5>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  copyTemplate(
+                    KAKAO_TEMPLATE(
+                      customer?.company || customer?.name,
+                      user || undefined
+                    ),
+                    "카카오톡"
+                  )
+                }
+              >
+                복사
+              </Button>
+            </div>
+            <div className="bg-gray-50 p-4 rounded border text-sm">
+              <pre className="whitespace-pre-wrap">
+                {KAKAO_TEMPLATE(
+                  customer?.company || customer?.name,
+                  user || undefined
+                )}
+              </pre>
+            </div>
           </div>
-          <div className="bg-gray-50 p-4 rounded border text-sm">
-            <pre className="whitespace-pre-wrap">
-              {templateType === "email"
-                ? EMAIL_TEMPLATE(customer?.name || "")
-                : KAKAO_TEMPLATE(customer?.name || "")}
-            </pre>
+        )}
+
+        {/* 문자 템플릿 */}
+        {followUpActions.includes("문자로_컨택_유도") && (
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <h5 className="font-medium text-gray-700">문자 템플릿</h5>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  copyTemplate(
+                    SMS_TEMPLATE(
+                      customer?.company || customer?.name,
+                      user || undefined
+                    ),
+                    "문자"
+                  )
+                }
+              >
+                복사
+              </Button>
+            </div>
+            <div className="bg-gray-50 p-4 rounded border text-sm">
+              <pre className="whitespace-pre-wrap">
+                {SMS_TEMPLATE(
+                  customer?.company || customer?.name,
+                  user || undefined
+                )}
+              </pre>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex justify-between">
         <Button variant="secondary" onClick={() => setStep("followup")}>

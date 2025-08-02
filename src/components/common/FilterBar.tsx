@@ -1,16 +1,16 @@
 "use client";
 
-import { Plus, Download } from "lucide-react";
-import { CustomerFilters, CustomerStatus } from "@/types";
-import { ALL_STATUS_OPTIONS } from "@/constants";
+import { useState } from "react";
+import { CustomerFilters } from "@/types";
+import { SORT_OPTIONS } from "@/constants";
+import { Search, Download, Plus, Filter } from "lucide-react";
 import Button from "./Button";
 
 interface FilterBarProps {
   filters: CustomerFilters;
   onFiltersChange: (filters: CustomerFilters) => void;
   onAddCustomer: () => void;
-  onExport?: () => void;
-  showAddButton?: boolean;
+  onExport: () => void;
 }
 
 export default function FilterBar({
@@ -18,93 +18,137 @@ export default function FilterBar({
   onFiltersChange,
   onAddCustomer,
   onExport,
-  showAddButton = true,
 }: FilterBarProps) {
-  const updateFilter = (key: keyof CustomerFilters, value: string) => {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const handleSearchChange = (search: string) => {
+    onFiltersChange({ ...filters, search });
+  };
+
+  const handleDateChange = (date: string) => {
+    onFiltersChange({ ...filters, date });
+  };
+
+  const handleSortChange = (sortBy: string) => {
     onFiltersChange({
       ...filters,
-      [key]: value || undefined,
+      sortBy: sortBy as CustomerFilters["sortBy"],
     });
   };
 
-  const resetFilters = () => {
-    onFiltersChange({});
+  const clearFilters = () => {
+    onFiltersChange({ sortBy: "latest" }); // 기본값으로 최신등록순 유지
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-      <div className="flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex flex-wrap gap-4 items-center">
-          {/* 상태 필터 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              상태
-            </label>
-            <select
-              value={filters.status || "all"}
-              onChange={(e) => updateFilter("status", e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-toss-blue focus:border-transparent"
-            >
-              {ALL_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 날짜 필터 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              날짜
-            </label>
-            <input
-              type="date"
-              value={filters.date || ""}
-              onChange={(e) => updateFilter("date", e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-toss-blue focus:border-transparent"
+    <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        {/* 검색 및 기본 필터 */}
+        <div className="flex flex-1 items-center space-x-4">
+          {/* 검색창 */}
+          <div className="relative flex-1 max-w-md">
+            <Search
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
             />
-          </div>
-
-          {/* 검색 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              검색
-            </label>
             <input
               type="text"
-              value={filters.search || ""}
-              onChange={(e) => updateFilter("search", e.target.value)}
               placeholder="이름, 회사명으로 검색..."
-              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-toss-blue focus:border-transparent"
+              value={filters.search || ""}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-toss-blue focus:border-transparent"
             />
           </div>
 
-          {/* 필터 초기화 */}
-          <div className="mt-6">
-            <Button variant="secondary" onClick={resetFilters}>
-              필터 초기화
-            </Button>
-          </div>
+          {/* 정렬 옵션 */}
+          <select
+            value={filters.sortBy || "latest"}
+            onChange={(e) => handleSortChange(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-toss-blue focus:border-transparent bg-white min-w-[140px]"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          {/* 고급 필터 토글 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-gray-600"
+          >
+            <Filter size={16} className="mr-1" />
+            {showAdvanced ? "간단히" : "고급 필터"}
+          </Button>
         </div>
 
         {/* 액션 버튼들 */}
-        <div className="flex gap-3">
-          {showAddButton && (
-            <Button onClick={onAddCustomer}>
-              <Plus size={16} className="mr-2" />
-              고객 추가
-            </Button>
-          )}
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onExport}
+            className="flex items-center"
+          >
+            <Download size={16} className="mr-1" />
+            엑셀 다운로드
+          </Button>
 
-          {onExport && (
-            <Button variant="secondary" onClick={onExport}>
-              <Download size={16} className="mr-2" />
-              엑셀 내보내기
-            </Button>
-          )}
+          <Button onClick={onAddCustomer} className="flex items-center">
+            <Plus size={16} className="mr-1" />새 고객 등록
+          </Button>
         </div>
       </div>
+
+      {/* 고급 필터 (펼칳/접기) */}
+      {showAdvanced && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* 날짜 필터 */}
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">
+                등록일:
+              </label>
+              <input
+                type="date"
+                value={filters.date || ""}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-toss-blue"
+              />
+            </div>
+
+            {/* 필터 초기화 */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="text-gray-500"
+            >
+              필터 초기화
+            </Button>
+
+            {/* 현재 필터 상태 표시 */}
+            {(filters.search || filters.date) && (
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <span>활성 필터:</span>
+                {filters.search && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                    검색: {filters.search}
+                  </span>
+                )}
+                {filters.date && (
+                  <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                    날짜: {filters.date}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

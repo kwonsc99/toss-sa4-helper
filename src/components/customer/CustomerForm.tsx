@@ -277,7 +277,10 @@ export default function CustomerForm({
         renderCustomerForm()
       ) : (
         <CallLogForm
-          customer={{ name: formData.name }}
+          customer={{
+            name: formData.name,
+            company: formData.company, // company 추가
+          }}
           onSubmit={handleCallLogSubmit}
           onCancel={() => setStep("customer")}
           embedded={true}

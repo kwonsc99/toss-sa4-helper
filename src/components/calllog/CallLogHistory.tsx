@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { CallLog, Customer } from "@/types";
-import { STATUS_OPTIONS } from "@/constants";
+import { STATUS_OPTIONS, FOLLOW_UP_ACTION_OPTIONS } from "@/constants";
 import { Edit, History } from "lucide-react";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
@@ -25,6 +25,28 @@ export default function CallLogHistory({
   onViewHistory,
 }: CallLogHistoryProps) {
   if (!customer) return null;
+
+  // 후속 행동 배열을 읽기 쉬운 텍스트로 변환하는 함수
+  const formatFollowUpActions = (actions: string[] | string) => {
+    // 기존 문자열 형태의 데이터 호환성 처리
+    if (typeof actions === "string") {
+      return actions.replace(/[_+]/g, " ").replace("로 컨택", "로 컨택");
+    }
+
+    // 배열 형태의 새로운 데이터 처리
+    if (Array.isArray(actions)) {
+      return actions
+        .map((action) => {
+          const option = FOLLOW_UP_ACTION_OPTIONS.find(
+            (opt) => opt.value === action
+          );
+          return option ? option.label : action;
+        })
+        .join(", ");
+    }
+
+    return "알 수 없음";
+  };
 
   return (
     <Modal
@@ -107,9 +129,7 @@ export default function CallLogHistory({
                       후속 행동
                     </div>
                     <div className="text-gray-600">
-                      {log.follow_up_action
-                        .replace(/[_+]/g, " ")
-                        .replace("로 컨택", "로 컨택")}
+                      {formatFollowUpActions(log.follow_up_action)}
                     </div>
                   </div>
                   <div>

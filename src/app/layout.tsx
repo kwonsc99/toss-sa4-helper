@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "토스 SA4 고객 관리 헬퍼",
-  description: "토스 SA4 고객 관리를 위한 웹 애플리케이션",
+  description: "토스 SA4팀의 고객 후속 관리 도구",
 };
 
 export default function RootLayout({
