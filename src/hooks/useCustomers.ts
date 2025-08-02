@@ -4,14 +4,35 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Customer, CustomerStatus, CustomerFilters } from "@/types";
 
+interface AuthData {
+  user: any;
+  expirationTime: number;
+}
+
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 현재 사용자 정보 가져오기
+  // 현재 사용자 정보 가져오기 - authData에서 user 추출
   const getCurrentUser = () => {
-    const userData = localStorage.getItem("user");
-    return userData ? JSON.parse(userData) : null;
+    const authDataStr = localStorage.getItem("authData");
+    if (!authDataStr) return null;
+
+    try {
+      const authData: AuthData = JSON.parse(authDataStr);
+      const now = Date.now();
+
+      // 만료 체크
+      if (now >= authData.expirationTime) {
+        localStorage.removeItem("authData");
+        return null;
+      }
+
+      return authData.user;
+    } catch (error) {
+      localStorage.removeItem("authData");
+      return null;
+    }
   };
 
   const loadCustomers = async (filters?: CustomerFilters) => {
@@ -19,8 +40,13 @@ export function useCustomers() {
     try {
       const currentUser = getCurrentUser();
       if (!currentUser?.id) {
-        throw new Error("사용자 정보를 찾을 수 없습니다.");
+        console.log("No current user found"); // 디버깅용
+        setCustomers([]);
+        setIsLoading(false);
+        return;
       }
+
+      console.log("Loading customers for user:", currentUser.id); // 디버깅용
 
       let query = supabase
         .from("customers")
@@ -71,6 +97,8 @@ export function useCustomers() {
       const { data, error } = await query;
 
       if (error) throw error;
+
+      console.log("Loaded customers:", data?.length || 0); // 디버깅용
       setCustomers(data || []);
     } catch (error) {
       console.error("Error loading customers:", error);
@@ -85,6 +113,8 @@ export function useCustomers() {
     if (!currentUser?.id) {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
+
+    console.log("Creating customer for user:", currentUser.id); // 디버깅용
 
     const { data, error } = await supabase
       .from("customers")
@@ -160,9 +190,10 @@ export function useCustomers() {
     if (error) throw error;
   };
 
-  useEffect(() => {
-    loadCustomers();
-  }, []);
+  // 사용자별 데이터 초기화를 위한 함수 추가
+  const clearCustomers = () => {
+    setCustomers([]);
+  };
 
   return {
     customers,
@@ -173,5 +204,6 @@ export function useCustomers() {
     deleteCustomer,
     updateCustomerStatus,
     bulkUpdateStatus,
+    clearCustomers, // 추가
   };
 }

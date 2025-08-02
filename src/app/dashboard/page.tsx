@@ -37,9 +37,15 @@ export default function Dashboard() {
     deleteCustomer,
     updateCustomerStatus,
     bulkUpdateStatus,
+    clearCustomers, // 추가
   } = useCustomers();
-  const { callLogs, createCallLog, updateCallLog, loadCallLogs } =
-    useCallLogs();
+  const {
+    callLogs,
+    createCallLog,
+    updateCallLog,
+    loadCallLogs,
+    clearCallLogs, // 추가
+  } = useCallLogs();
 
   // 상태 관리
   const [activeStatus, setActiveStatus] = useState<CustomerStatus | "all">(
@@ -63,17 +69,30 @@ export default function Dashboard() {
 
   // 인증 확인 및 리다이렉트
   useEffect(() => {
+    console.log("Dashboard useEffect - user:", user, "isLoading:", isLoading); // 디버깅용
+
     // 로딩이 완료되고 사용자가 없으면 메인 페이지로 리다이렉트
     if (!isLoading && !user) {
+      // 데이터 초기화
+      clearCustomers();
+      clearCallLogs();
       router.replace("/");
       return;
     }
 
     // 사용자가 있을 때만 데이터 로드
     if (user) {
+      console.log("Loading data for user:", user.id); // 디버깅용
       loadCustomers({ ...filters, status: activeStatus });
     }
-  }, [user, isLoading, activeStatus, filters, router]);
+  }, [user, isLoading, router]); // activeStatus와 filters 제거
+
+  // 필터나 상태 변경시 데이터 다시 로드
+  useEffect(() => {
+    if (user) {
+      loadCustomers({ ...filters, status: activeStatus });
+    }
+  }, [activeStatus, filters]); // user 제외
 
   // 필터 적용된 고객 목록 (정렬 포함)
   const filteredCustomers = useMemo(() => {

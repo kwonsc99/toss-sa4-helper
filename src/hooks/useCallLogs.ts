@@ -4,15 +4,36 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { CallLog, CallLogHistory, CallLogFormData } from "@/types";
 
+interface AuthData {
+  user: any;
+  expirationTime: number;
+}
+
 export function useCallLogs() {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [callLogHistory, setCallLogHistory] = useState<CallLogHistory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 현재 사용자 정보 가져오기
+  // 현재 사용자 정보 가져오기 - authData에서 user 추출
   const getCurrentUser = () => {
-    const userData = localStorage.getItem("user");
-    return userData ? JSON.parse(userData) : null;
+    const authDataStr = localStorage.getItem("authData");
+    if (!authDataStr) return null;
+
+    try {
+      const authData: AuthData = JSON.parse(authDataStr);
+      const now = Date.now();
+
+      // 만료 체크
+      if (now >= authData.expirationTime) {
+        localStorage.removeItem("authData");
+        return null;
+      }
+
+      return authData.user;
+    } catch (error) {
+      localStorage.removeItem("authData");
+      return null;
+    }
   };
 
   const loadCallLogs = async (customerId?: string) => {
@@ -20,8 +41,13 @@ export function useCallLogs() {
     try {
       const currentUser = getCurrentUser();
       if (!currentUser?.id) {
-        throw new Error("사용자 정보를 찾을 수 없습니다.");
+        console.log("No current user found for call logs"); // 디버깅용
+        setCallLogs([]);
+        setIsLoading(false);
+        return;
       }
+
+      console.log("Loading call logs for user:", currentUser.id); // 디버깅용
 
       let query = supabase
         .from("call_logs")
@@ -41,6 +67,8 @@ export function useCallLogs() {
       const { data, error } = await query;
 
       if (error) throw error;
+
+      console.log("Loaded call logs:", data?.length || 0); // 디버깅용
       setCallLogs(data || []);
     } catch (error) {
       console.error("Error loading call logs:", error);
@@ -65,6 +93,8 @@ export function useCallLogs() {
     if (!currentUser?.id) {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
+
+    console.log("Creating call log for user:", currentUser.id); // 디버깅용
 
     // 후속 행동 유효성 검증
     if (
@@ -152,6 +182,12 @@ export function useCallLogs() {
     }
   };
 
+  // 콜로그 데이터 초기화를 위한 함수 추가
+  const clearCallLogs = () => {
+    setCallLogs([]);
+    setCallLogHistory([]);
+  };
+
   return {
     callLogs,
     callLogHistory,
@@ -160,5 +196,6 @@ export function useCallLogs() {
     createCallLog,
     updateCallLog,
     loadCallLogHistory,
+    clearCallLogs, // 추가
   };
 }
