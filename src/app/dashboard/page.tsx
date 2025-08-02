@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   CustomerStatus,
   CustomerFilters,
@@ -23,11 +24,13 @@ import CallLogHistory from "@/components/calllog/CallLogHistory";
 import CallLogEditForm from "@/components/calllog/CallLogEditForm";
 
 export default function Dashboard() {
+  const router = useRouter();
+
   // 모든 Hook을 맨 위에 배치 (조건부 실행 없이)
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const {
     customers,
-    isLoading,
+    isLoading: customersLoading,
     loadCustomers,
     createCustomer,
     updateCustomer,
@@ -58,13 +61,20 @@ export default function Dashboard() {
   );
   const [editingCallLog, setEditingCallLog] = useState<CallLog | null>(null);
 
-  // 필터 변경 시 고객 데이터 다시 로드
+  // 인증 확인 및 리다이렉트
   useEffect(() => {
+    // 로딩이 완료되고 사용자가 없으면 메인 페이지로 리다이렉트
+    if (!isLoading && !user) {
+      router.replace("/");
+      return;
+    }
+
+    // 사용자가 있을 때만 데이터 로드
     if (user) {
-      // user가 있을 때만 실행
       loadCustomers({ ...filters, status: activeStatus });
     }
-  }, [activeStatus, filters, user]);
+  }, [user, isLoading, activeStatus, filters, router]);
+
   // 필터 적용된 고객 목록 (정렬 포함)
   const filteredCustomers = useMemo(() => {
     let filtered = customers.filter((customer) => {
@@ -227,12 +237,14 @@ export default function Dashboard() {
     setShowCallLogHistory(true);
   };
 
-  // user가 없거나 로딩 중일 때는 로딩 화면 표시 (Hook 순서 변경 없이)
-  if (!user) {
+  // 로딩 중이거나 사용자가 없으면 로딩 화면
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="text-xl font-semibold text-toss-gray">로딩 중...</div>
+          <div className="text-xl font-semibold text-toss-gray">
+            {isLoading ? "로딩 중..." : "인증 확인 중..."}
+          </div>
         </div>
       </div>
     );
@@ -259,7 +271,7 @@ export default function Dashboard() {
 
         <CustomerTable
           customers={filteredCustomers}
-          isLoading={isLoading}
+          isLoading={customersLoading}
           selectedCustomers={selectedCustomers}
           onCustomerSelect={setSelectedCustomers}
           onEdit={(customer) => {
