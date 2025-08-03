@@ -36,8 +36,8 @@ export const STATUS_OPTIONS: Record<CustomerStatus, StatusOption> = {
 
 // 상태 배열 (순서대로) - 새로운 상태명으로 변경
 export const STATUS_LIST: CustomerStatus[] = [
-  "입점약속",
   "검토후연락",
+  "입점약속",
   "가입완료",
   "청약심사", // 상품등록필요 → 청약심사
   "청약완료", // 완전입점완료 → 청약완료
@@ -75,7 +75,7 @@ export const EMAIL_TEMPLATE = (companyName?: string, user?: User) => {
   const senderPhone = user?.phone || "070-4353-5478";
 
   return `안녕하세요, 토스 커머스팀 MD ${senderName}입니다.
-  
+
 오늘 연락드렸으나 통화가 어려워 이메일을 드립니다.
 저희 토스에서도 ${companyName}의 상품 판매 제안 차 연락드렸습니다.
 명함과 소개서 첨부해드리니, 검토 후 회신 부탁드립니다.
