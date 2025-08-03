@@ -36,7 +36,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
           <div className="flex items-center">
             <h1 className="text-xl font-semibold text-toss-gray flex items-center">
               <img
-                src="/tossicon.svg"
+                src="/favicon.svg"
                 alt="Toss Icon"
                 className="w-6 h-6 mr-2"
               />

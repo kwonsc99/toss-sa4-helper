@@ -92,7 +92,7 @@ export default function LoginPage() {
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-toss-gray mb-2 flex items-center justify-center">
-            <img src="/tossicon.svg" alt="Toss Icon" className="w-6 h-6 mr-2" />
+            <img src="/favicon.svg" alt="Toss Icon" className="w-6 h-6 mr-2" />
             토스 SA4 고객 관리 헬퍼
           </h1>
           <p className="text-gray-600">회원가입 문의: 010-8567-5197</p>
