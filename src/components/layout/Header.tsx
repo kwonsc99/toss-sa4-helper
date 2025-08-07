@@ -19,6 +19,10 @@ export default function Header({ user, onLogout }: HeaderProps) {
       path: "/dashboard",
     },
     {
+      name: "후속 연락 템플릿", // 추가
+      path: "/templates",
+    },
+    {
       name: "콘텐츠",
       path: "/contents",
     },
