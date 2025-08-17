@@ -26,6 +26,10 @@ export default function Header({ user, onLogout }: HeaderProps) {
       name: "콘텐츠",
       path: "/contents",
     },
+    {
+      name: "쿠팡리없셀",
+      path: "/easycrawl",
+    },
   ];
 
   const handleNavigation = (path: string) => {
