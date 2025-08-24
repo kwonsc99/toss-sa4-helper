@@ -86,12 +86,12 @@ export default function CallLogEditForm({
         switch (action) {
           case "조치안함":
             return "조치안함";
-          case "이메일로_컨택_유도":
-            return "이메일로 컨택 유도";
-          case "카톡으로_컨택_유도":
-            return "카톡으로 컨택 유도";
-          case "문자로_컨택_유도":
-            return "문자로 컨택 유도";
+          case "이메일":
+            return "이메일";
+          case "카톡":
+            return "카톡";
+          case "문자":
+            return "문자";
           default:
             return action;
         }

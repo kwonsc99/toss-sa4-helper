@@ -408,7 +408,7 @@ const ContentsPage: React.FC = () => {
       title: "기획전 참여 안내",
       description: "기획전 참여 페이지입니다. 해당 링크를 셀러에게 공유하세요",
       type: "link",
-      url: "https://tosspublic.notion.site/25-08-231714bbfde780bead0ae327ed8444d5",
+      url: "https://tosspublic.notion.site/25-09-253714bbfde78015b923d8ffdaa989cb",
       category: "link",
       icon: "link",
       updatedAt: "2024.08.03",

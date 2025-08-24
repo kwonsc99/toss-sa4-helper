@@ -41,7 +41,7 @@ export const FOLLOW_UP_TEMPLATES: Template[] = [
     title: "(카톡) 셀러가 청약 승인이 끝난 경우",
     type: "kakao",
     getContent: (user?: User) => [
-      "대표님, 청약 승인이 확인되어 기획전 참여 링크를 아래에 전달드립니다.\n\nhttps://tosspublic.notion.site/25-08-231714bbfde780bead0ae327ed8444d5",
+      "대표님, 청약 승인이 확인되어 기획전 참여 링크를 아래에 전달드립니다.\n\nhttps://tosspublic.notion.site/25-09-253714bbfde78015b923d8ffdaa989cb",
     ],
   },
   {

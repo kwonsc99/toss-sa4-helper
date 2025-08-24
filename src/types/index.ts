@@ -13,11 +13,7 @@ export type ConnectionStatus = "부재중" | "연결" | "연결 후 즉시 끊�
 
 // 후속 행동 타입
 // 후속 행동 타입을 개별 액션으로 분리
-export type FollowUpActionType =
-  | "조치안함"
-  | "이메일로_컨택_유도"
-  | "카톡으로_컨택_유도"
-  | "문자로_컨택_유도";
+export type FollowUpActionType = "조치안함" | "이메일" | "카톡" | "문자";
 
 // 후속 행동은 배열로 저장
 export type FollowUpAction = FollowUpActionType[];

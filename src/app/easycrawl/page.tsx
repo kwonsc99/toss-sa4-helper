@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Copy, Download, Upload, RefreshCw, Settings, X } from "lucide-react";
 import Header from "@/components/layout/Header";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function EasyCrawlPage() {
   const [jsonOutput, setJsonOutput] = useState("");
@@ -43,11 +45,100 @@ export default function EasyCrawlPage() {
     }
 
     try {
-      // 여기서는 클라이언트 사이드에서 XLSX 라이브러리를 사용
-      // 실제 구현에서는 xlsx 라이브러리를 import 해야 합니다
-      alert("파일 처리 기능은 xlsx 라이브러리 설치 후 구현됩니다.");
+      let allData: any[] = [];
+      let headers: string[] = [];
+
+      // 모든 파일 처리
+      for (const file of uploadedFiles) {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (jsonData.length === 0) continue;
+
+        // 첫 번째 파일에서 헤더 추출
+        if (headers.length === 0) {
+          headers = jsonData[0] as string[];
+        }
+
+        // 데이터 행들 추가 (헤더 제외)
+        const dataRows = jsonData.slice(1);
+        allData = allData.concat(dataRows);
+      }
+
+      if (allData.length === 0) {
+        alert("처리할 데이터가 없습니다.");
+        return;
+      }
+
+      // 사업자번호 컬럼 인덱스 찾기
+      const businessNumberIndex = headers.findIndex(
+        (header) => header && header.toString().toLowerCase().includes("사업자")
+      );
+
+      if (businessNumberIndex === -1) {
+        alert(
+          "사업자번호 컬럼을 찾을 수 없습니다. 컬럼명에 '사업자'가 포함되어 있는지 확인해주세요."
+        );
+        return;
+      }
+
+      // 사업자번호 기준으로 중복 제거
+      const uniqueData: any[] = [];
+      const seenBusinessNumbers = new Set<string>();
+
+      for (const row of allData) {
+        const businessNumber = row[businessNumberIndex]?.toString().trim();
+
+        // 사업자번호가 없거나 빈 값인 경우 건너뛰기
+        if (!businessNumber) continue;
+
+        // 중복되지 않은 사업자번호만 추가
+        if (!seenBusinessNumbers.has(businessNumber)) {
+          seenBusinessNumbers.add(businessNumber);
+          uniqueData.push(row);
+        }
+      }
+
+      if (uniqueData.length === 0) {
+        alert("유효한 사업자번호가 있는 데이터가 없습니다.");
+        return;
+      }
+
+      // 새 워크북 생성
+      const newWorkbook = XLSX.utils.book_new();
+      const newWorksheet = XLSX.utils.aoa_to_sheet([headers, ...uniqueData]);
+      XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "중복제거결과");
+
+      // 엑셀 파일로 내보내기
+      const excelBuffer = XLSX.write(newWorkbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const currentDate = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/:/g, "-");
+      const fileName = `사업자번호_중복제거_${currentDate}.xlsx`;
+
+      saveAs(blob, fileName);
+
+      alert(
+        `✅ 중복 제거 완료!\n\n원본 데이터: ${
+          allData.length
+        }행\n중복 제거 후: ${uniqueData.length}행\n제거된 중복: ${
+          allData.length - uniqueData.length
+        }행\n\n파일이 다운로드됩니다.`
+      );
     } catch (error) {
-      alert("파일 처리 중 오류가 발생했습니다.");
+      console.error("파일 처리 중 오류:", error);
+      alert("파일 처리 중 오류가 발생했습니다. 파일 형식을 확인해주세요.");
     }
   };
 

@@ -63,9 +63,9 @@ export const ALL_STATUS_OPTIONS = [
 
 export const FOLLOW_UP_ACTION_OPTIONS = [
   { value: "조치안함", label: "조치안함" },
-  { value: "이메일로_컨택_유도", label: "이메일로 컨택 유도" },
-  { value: "카톡으로_컨택_유도", label: "카톡으로 컨택 유도" },
-  { value: "문자로_컨택_유도", label: "문자로 컨택 유도" },
+  { value: "이메일", label: "이메일" },
+  { value: "카톡", label: "카톡" },
+  { value: "문자", label: "문자" },
 ] as const;
 
 // 템플릿들은 동일하게 유지
