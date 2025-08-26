@@ -79,12 +79,7 @@ export function useCallLogs() {
   };
 
   const validateFollowUpAction = (actions: string[]): boolean => {
-    const validActions = [
-      "조치안함",
-      "이메일로_컨택_유도",
-      "카톡으로_컨택_유도",
-      "문자로_컨택_유도",
-    ];
+    const validActions = ["조치안함", "이메일", "카톡", "문자"];
     return actions.every((action) => validActions.includes(action));
   };
 
